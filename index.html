@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aim Trainer Game</title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #001d24;
+      font-family: sans-serif;
+    }
+
+    canvas {
+      display: block;
+      margin: 0 auto;
+      background-color: #001d24;
+    }
+
+    #info {
+      text-align: center;
+      color: white;
+      margin-top: 10px;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<div id="info">
+  Time: <span id="time">00:00.0</span> |
+  Hits: <span id="hits">0</span> |
+  Clicks: <span id="clicks">0</span> |
+  Accuracy: <span id="accuracy">0%</span> |
+  Lives: <span id="lives">3</span>
+</div>
+
+<script>
+  const canvas = document.getElementById("gameCanvas");
+  const ctx = canvas.getContext("2d");
+
+  const WIDTH = canvas.width;
+  const HEIGHT = canvas.height;
+  const TARGET_INCREMENT = 1000;
+  const TARGET_PADDING = 30;
+  const TOP_BAR_HEIGHT = 50;
+  const MAX_LIVES = 3;
+
+  let targets = [];
+  let lives = MAX_LIVES;
+  let hits = 0;
+  let clicks = 0;
+  let running = true;
+  let startTime = Date.now();
+
+  class Target {
+    constructor(x, y) {
+      this.x = x;
+      this.y = y;
+      this.size = 0;
+      this.grow = true;
+      this.maxSize = 30;
+      this.growthRate = 0.4;
+    }
+
+    update() {
+      if (this.grow && this.size + this.growthRate >= this.maxSize) {
+        this.grow = false;
+      }
+      if (this.grow) {
+        this.size += this.growthRate;
+      } else {
+        this.size -= this.growthRate;
+      }
+    }
+
+    draw() {
+      ctx.beginPath();
+      ctx.fillStyle = "red";
+      ctx.arc(this.x, this.y, this.size, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = "white";
+      ctx.arc(this.x, this.y, this.size * 0.8, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = "red";
+      ctx.arc(this.x, this.y, this.size * 0.6, 0, 2 * Math.PI);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.fillStyle = "white";
+      ctx.arc(this.x, this.y, this.size * 0.4, 0, 2 * Math.PI);
+      ctx.fill();
+    }
+
+    isHit(mx, my) {
+      const dx = this.x - mx;
+      const dy = this.y - my;
+      return Math.sqrt(dx * dx + dy * dy) <= this.size;
+    }
+  }
+
+  function spawnTarget() {
+    if (!running) return;
+    const x = Math.random() * (WIDTH - 2 * TARGET_PADDING) + TARGET_PADDING;
+    const y = Math.random() * (HEIGHT - 2 * TARGET_PADDING - TOP_BAR_HEIGHT) + TOP_BAR_HEIGHT;
+    targets.push(new Target(x, y));
+  }
+
+  function updateTargets() {
+    for (let i = targets.length - 1; i >= 0; i--) {
+      targets[i].update();
+      if (targets[i].size <= 0) {
+        targets.splice(i, 1);
+        lives--;
+        updateStats();
+        if (lives <= 0) {
+          endGame();
+        }
+      }
+    }
+  }
+
+  function drawGame() {
+    ctx.clearRect(0, 0, WIDTH, HEIGHT);
+    targets.forEach(target => target.draw());
+  }
+
+  function updateStats() {
+    const elapsed = (Date.now() - startTime) / 1000;
+    const mins = Math.floor(elapsed / 60);
+    const secs = Math.floor(elapsed % 60);
+    const ms = Math.floor((elapsed * 10) % 10);
+    const accuracy = clicks > 0 ? ((hits / clicks) * 100).toFixed(1) : "0";
+
+    document.getElementById("time").textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}.${ms}`;
+    document.getElementById("hits").textContent = hits;
+    document.getElementById("clicks").textContent = clicks;
+    document.getElementById("accuracy").textContent = `${accuracy}%`;
+    document.getElementById("lives").textContent = lives;
+  }
+
+  function gameLoop() {
+    if (!running) return;
+    updateTargets();
+    drawGame();
+    updateStats();
+    requestAnimationFrame(gameLoop);
+  }
+
+  function endGame() {
+    running = false;
+    const finalAccuracy = clicks > 0 ? ((hits / clicks) * 100).toFixed(1) : 0;
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    setTimeout(() => {
+      alert(`Game Over!\nTime: ${elapsed}s\nHits: ${hits}\nClicks: ${clicks}\nAccuracy: ${finalAccuracy}%`);
+      location.reload();
+    }, 100);
+  }
+
+  canvas.addEventListener("mousedown", (e) => {
+    if (!running) return;
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    clicks++;
+    for (let i = 0; i < targets.length; i++) {
+      if (targets[i].isHit(mx, my)) {
+        hits++;
+        targets.splice(i, 1);
+        break;
+      }
+    }
+    updateStats();
+  });
+
+  setInterval(spawnTarget, TARGET_INCREMENT);
+  gameLoop();
+</script>
+
+</body>
+</html>
+
