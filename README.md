@@ -28,7 +28,7 @@ Canvas API
 
 Clone the repo:
 
-git clone https://github.com/your-username/Aim-Trainer.git
+git clone https://github.com/prasanthpenumudi/Aim-Trainer.git
 
 
 Open index.html in your browser.
